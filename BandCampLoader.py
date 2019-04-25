@@ -66,16 +66,15 @@ def init():
 
     tracklist = []
     inline = False
+    data = None
     for line in content:
         if "var TralbumData" in line:
             inline = True
         elif "trackinfo" in line and inline:
-            data = line.strip("trackinfo: [").strip("],").replace("},{", "}, {").split(", ")
-            for track in data:
-                tracklist.append(json.loads(track))
+            data = json.loads(line.strip("trackinfo: ").strip(","))
             inline = False
 
-    for track in tracklist:
+    for track in data:
         name = location + SLASH + track["title"].replace("/", u"\u29F8").replace("/", u"\u29F9") + ".mp3"
         url = track["file"]["mp3-128"]
         get_file(name, url)
