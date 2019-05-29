@@ -55,7 +55,11 @@ def init():
     inputurl = input("Please enter the URL of the Album to download:\n")
 
     artist = inputurl.split(".bandcamp")[0].split("//")[1].title()
-    album = inputurl.split("album/")[1].replace("-", " ").title()
+    album = None
+    if "track" in inputurl:
+        album = inputurl.split("track/")[1].replace("-", " ").title()
+    else:
+        album = inputurl.split("album/")[1].replace("-", " ").title()
     location = artist + " - " + album
 
     if not os.path.exists(CWD + location):
