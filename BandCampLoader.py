@@ -80,7 +80,7 @@ def init():
 
     for track in data:
         if not track["file"] is None:
-            name = location + SLASH + track["title"].replace("/", u"\u29F8").replace("/", u"\u29F9") + ".mp3"
+            name = location + SLASH + track["title"].replace("/", u"\u29F8").replace("\\", u"\u29F9") + ".mp3"
             url = track["file"]["mp3-128"]
             get_file(name, url)
 
