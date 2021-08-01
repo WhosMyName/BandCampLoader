@@ -89,7 +89,9 @@ def __main__():
             inline = False
 
     for item in data["track"]["itemListElement"]:
-        name = f"{location}{SLASH}{item['item']['name']}.mp3"
+        name = f"{location}{SLASH}{item['item']['name']}.mp3".replace(
+            "/", "\u29F8"
+        ).replace("\\", "\u29F9")
         url = None
         for track_property in item["item"]["additionalProperty"]:
             if (
