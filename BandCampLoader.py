@@ -16,41 +16,41 @@ CWD = os.path.dirname(os.path.realpath(__file__)) + SLASH
 def get_file(srcfile, srcurl, counter=0, ftype=0):
     """Function to Downloadad and verify downloaded Files"""
     if counter == 5:
-        print("Could not download File:", srcfile, "in 5 attempts")
+        print(f"Could not download File: {srcfile} in 5 attempts")
         return 1
     counter = counter + 1
     if not os.path.isfile(srcfile):
         time.sleep(1)
-        print("Downloading", srcurl, "as", srcfile)
+        print(f"Downloading {srcurl} as {srcfile}")
         with open(srcfile, "wb") as fifo:#open in binary write mode
             response = requests.get(srcurl)#get request
             fifo.write(response.content)#write to file
         if int(str(os.path.getsize(srcfile)).strip("L")) < 25000 and ftype: #Assumes Error in Download and redownlads File
-            print("Redownloading", srcurl, "as", srcfile)
+            print(f"Redownloading {srcurl} as {srcfile}")
             autocleanse(srcfile)
             return get_file(srcfile, srcurl, counter)
         else: #Assume correct Filedownload
             return 0
     else:
         if int(str(os.path.getsize(srcfile)).strip("L")) < 25000 and ftype: #Assumes Error in Download and redownlads File
-            print(srcfile, "was already downloaded but the filesize does not seem to fit -> Redownl0ading")
+            print(f"{srcfile} was already downloaded but the filesize does not seem to fit -> Redownl0ading")
             autocleanse(srcfile)
             return get_file(srcfile, srcurl, 0)
         else: #Assume correct Filedownload
-            print(srcfile, "was downloaded correctly on a previous run")
+            print(f"{srcfile} was downloaded correctly on a previous run")
             return 0
 
 def autocleanse(cleansefile):
     """ Function for safautocleanseer deleting of files """
     if os.path.exists(cleansefile):
         os.remove(cleansefile)
-        print("Removed:", cleansefile)
+        print(f"Removed: {cleansefile}")
         return
     else:
-        print("File", cleansefile, "not deleted, due to File not existing")
+        print(f"File {cleansefile} not deleted, due to File not existing")
         return
 
-def init():
+def __main__():
     """ parses and loads files """
     inputurl = input("Please enter the URL of the Album to download:\n")
 
@@ -68,26 +68,24 @@ def init():
     resp = requests.get(inputurl)
     content = resp.text.split("\n")
 
-    tracklist = []
     inline = False
     data = None
     for line in content:
-        if "var TralbumData" in line:
+        if "application/ld+json" in line:
             inline = True
-        elif "trackinfo" in line and inline:
-            data = json.loads(line.strip("trackinfo: ").strip(","))
+        elif "mp3-128" in line and inline:
+            data = json.loads(line)
+            inline = False
+        elif "</head>" in line:
             inline = False
 
-    for track in data:
-        if not track["file"] is None:
-            name = location + SLASH + track["title"].replace("/", u"\u29F8").replace("\\", u"\u29F9") + ".mp3"
-            url = track["file"]["mp3-128"]
-            get_file(name, url)
-
-
-def __main__():
-    """ MAIN """
-    init()
+    for item in data["track"]["itemListElement"]:
+        name = f"{location}{SLASH}{item['item']['name']}.mp3"
+        url = None
+        for track_property in item["item"]["additionalProperty"]:
+            if "value" in track_property and isinstance(track_property["value"], str) and "mp3-128" in track_property["value"]:
+                url = track_property['value']
+        get_file(name, url)
 
 if __name__ == "__main__":
     __main__()
