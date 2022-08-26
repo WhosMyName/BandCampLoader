@@ -1,10 +1,13 @@
-""" album trial loader for bandcamp """
+""" Track/Album Downloader for https://bandcamp.com """
 
 import os
 import json
 import time
+from html import unescape
+from concurrent import futures
 
 import requests
+
 
 if os.name == "nt":
     SLASH = "\\"
@@ -13,12 +16,11 @@ else:
 
 CWD = os.path.dirname(os.path.realpath(__file__)) + SLASH
 
-
-def get_file(srcfile, srcurl, counter=0, ftype=0):
+def get_file(srcfile, srcurl, counter=0, ftype=0) -> bool:
     """Function to Downloadad and verify downloaded Files"""
     if counter == 5:
         print(f"Could not download File: {srcfile} in 5 attempts")
-        return 1
+        return False
     counter = counter + 1
     if not os.path.isfile(srcfile):
         time.sleep(1)
@@ -33,7 +35,7 @@ def get_file(srcfile, srcurl, counter=0, ftype=0):
             autocleanse(srcfile)
             return get_file(srcfile, srcurl, counter)
         else:  # Assume correct Filedownload
-            return 0
+            return True
     else:
         if (
             int(str(os.path.getsize(srcfile)).strip("L")) < 25000 and ftype
@@ -45,23 +47,20 @@ def get_file(srcfile, srcurl, counter=0, ftype=0):
             return get_file(srcfile, srcurl, 0)
         else:  # Assume correct Filedownload
             print(f"{srcfile} was downloaded correctly on a previous run")
-            return 0
+            return True
 
 
-def autocleanse(cleansefile):
+def autocleanse(cleansefile) -> None:
     """Function for safautocleanseer deleting of files"""
     if os.path.exists(cleansefile):
         os.remove(cleansefile)
         print(f"Removed: {cleansefile}")
-        return
-    else:
-        print(f"File {cleansefile} not deleted, due to File not existing")
-        return
 
 
 def __main__():
     """parses and loads files"""
-    inputurl = input("Please enter the URL of the Album to download:\n")
+    # inputurl = input("Please enter the URL of the Album to download:\n")
+    inputurl = "https://riotjazz.bandcamp.com/album/on-tour"
 
     artist = inputurl.split(".bandcamp")[0].split("//")[1].title()
     album = None
@@ -69,38 +68,30 @@ def __main__():
         album = inputurl.split("track/")[1].replace("-", " ").title()
     else:
         album = inputurl.split("album/")[1].replace("-", " ").title()
-    location = artist + " - " + album
+    location = f"{CWD}{artist} - {album}{SLASH}"
 
-    if not os.path.exists(CWD + location):
+    if not os.path.exists(location):
         os.mkdir(location)
 
-    resp = requests.get(inputurl)
-    content = resp.text.split("\n")
 
-    inline = False
-    data = None
+    content = requests.get(inputurl).text.split("\n")
     for line in content:
-        if "application/ld+json" in line:
-            inline = True
-        elif "mp3-128" in line and inline:
-            data = json.loads(line)
-            inline = False
-        elif "</head>" in line:
-            inline = False
+        if "data-tralbum=\"" in line:
+            unescaped_line = unescape(line.split("data-tralbum=\"")[1].split("\"")[0])
+            data = json.loads(unescaped_line)
 
-    for item in data["track"]["itemListElement"]:
-        name = f"{location}{SLASH}{item['item']['name']}.mp3".replace(
-            "/", "\u29F8"
-        ).replace("\\", "\u29F9")
-        url = None
-        for track_property in item["item"]["additionalProperty"]:
-            if (
-                "value" in track_property
-                and isinstance(track_property["value"], str)
-                and "mp3-128" in track_property["value"]
-            ):
-                url = track_property["value"]
-        get_file(name, url)
+    tracklist = [{f"{location}{track['title']}.mp3": track["file"]["mp3-128"]} for track in data["trackinfo"]]
+    with futures.ThreadPoolExecutor() as executor:
+        for track in tracklist:
+            for name, track_url in track.items():
+                if track_url:
+                    thread_kwargs: dict = {
+                    "srcfile": name,
+                    "srcurl": track_url
+                    }
+                    executor.submit(get_file, **thread_kwargs)
+                else:
+                    print(f"Failed downloading {name}\nNo URL qwq")
 
 
 if __name__ == "__main__":
