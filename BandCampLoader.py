@@ -59,8 +59,8 @@ def autocleanse(cleansefile) -> None:
 
 def __main__():
     """parses and loads files"""
-    # inputurl = input("Please enter the URL of the Album to download:\n")
-    inputurl = "https://riotjazz.bandcamp.com/album/on-tour"
+    inputurl = input("Please enter the URL of the Album to download:\n")
+    # inputurl = "https://riotjazz.bandcamp.com/album/on-tour"
 
     artist = inputurl.split(".bandcamp")[0].split("//")[1].title()
     album = None
